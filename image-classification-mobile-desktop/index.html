@@ -1,0 +1,181 @@
+<html>
+<head>
+<link rel="stylesheet" href="style.css"> 
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+<script type="text/javascript">
+var is_mobile = false;
+window.onload = function(){	
+	is_mobile = check_mobile();
+	//is_mobile = true;
+	function check_mobile(){
+		var filter = "win16|win32|win64|mac";
+		if(navigator.platform){
+			if(0 > filter.indexOf(navigator.platform.toLowerCase())){
+				return true;
+			}else{
+				return false;
+			}
+		}
+	}	
+	
+	document.getElementById("loading").style.display="none";
+	document.getElementById("web_cam_btn").style.display="none";
+	document.getElementById("webcam-container").style.display="none";
+	document.getElementById("mob_cam_btn").style.display="none";
+	document.getElementById("mob_capture").style.display="none";
+	document.getElementById("mob-container").style.display="none";
+	document.getElementById("camera--sensor").style.display="none";
+	if(is_mobile){
+		document.getElementById("mob-container").style.display="block";
+		document.getElementById("camera--sensor").style.display="block";
+		document.getElementById("mob_cam_btn").style.display="block";
+		document.getElementById("mob_capture").style.display="block";
+	}else{
+		document.getElementById("webcam-container").style.display="block";
+		document.getElementById("web_cam_btn").style.display="block";
+	}
+}
+
+	// More API functions here:
+    // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
+    // the link to your model provided by Teachable Machine export panel
+    const URL = "./my_model/";
+    let model, webcam, labelContainer, maxPredictions;	
+
+	////////////////////////////////////////////////////
+	// Desktop - Chrome browser checked!
+	////////////////////////////////////////////////////	
+    // Load the image model and setup the webcam
+    async function init_web_cam() {
+		document.getElementById("loading").style.display="block";
+		
+		const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+		
+		// load the model and metadata
+        // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
+        // or files from your local hard drive
+		// Note: the pose library adds "tmImage" object to your window (window.tmImage)
+        model = await tmImage.load(modelURL, metadataURL);
+		maxPredictions = model.getTotalClasses();
+		document.getElementById("loading").style.display="none";
+		
+		labelContainer = document.getElementById("label-container");
+        for (let i = 0; i < maxPredictions; i++) { // and class labels
+            labelContainer.appendChild(document.createElement("div"));
+        }
+		
+        // Convenience function to setup a webcam
+        const flip = true; // whether to flip the webcam
+        webcam = new tmImage.Webcam(400, 400, flip); // width, height, flip
+        await webcam.setup(); // request access to the webcam
+        await webcam.play();
+        window.requestAnimationFrame(loop);
+
+        // append elements to the DOM
+        document.getElementById("webcam-container").appendChild(webcam.canvas);        
+    }
+
+    async function loop() {
+        webcam.update(); // update the webcam frame
+        await predict();
+        window.requestAnimationFrame(loop);
+    }
+
+    // run the webcam image through the image model
+    async function predict() {
+        // predict can take in an image, video or canvas html element
+        const prediction = await model.predict(webcam.canvas);
+        for (let i = 0; i < maxPredictions; i++) {
+            const classPrediction =
+                prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+            labelContainer.childNodes[i].innerHTML = classPrediction;
+        }
+    }
+	
+	////////////////////////////////////////////////////
+	// Mobile - Iphone 7 checked!
+	////////////////////////////////////////////////////
+	// Set constraints for the video stream
+	var cameraView = null;
+	var cameraSensor = null; //canvas
+	var constraints;
+	//var track = null;
+	// Define constants
+	async function init_mob_cam(btn){
+		document.getElementById("loading").style.display="block";
+		const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+		
+		// load the model and metadata
+        // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
+        // or files from your local hard drive
+		// Note: the pose library adds "tmImage" object to your window (window.tmImage)
+        model = await tmImage.load(modelURL, metadataURL);
+		maxPredictions = model.getTotalClasses();
+		document.getElementById("loading").style.display="none";
+		
+		labelContainer = document.getElementById("label-container");
+        for (let i = 0; i < maxPredictions; i++) { // and class labels
+            labelContainer.appendChild(document.createElement("div"));
+        }
+		
+		cameraView = document.querySelector("#camera--view");
+		cameraSensor = document.querySelector("#camera--sensor");
+		constraints = { video: { facingMode: "user" }, audio: false };
+		cameraStart();
+	}
+	
+	// Access the device camera and stream to cameraView
+	async function cameraStart() {
+		navigator.mediaDevices
+			.getUserMedia(constraints)
+			.then(function(stream) {
+				//track = stream.getTracks()[0];
+				cameraView.srcObject = stream;
+			})
+			.catch(function(error) {
+				console.error("Oops. Something is broken.", error);
+			});
+	}
+	
+	async function capture_predict(){
+		cameraSensor.width = cameraView.videoWidth;
+		cameraSensor.height = cameraView.videoHeight;
+		await cameraSensor.getContext("2d").drawImage(cameraView, 0, 0)
+		
+		await predict_mob(cameraSensor); //transfer canvas
+	}
+	
+	async function predict_mob(canvas) {
+		// predict can take in an image, video or canvas html element
+        const prediction = await model.predict(canvas);
+		for (let i = 0; i < maxPredictions; i++) {
+		    const classPrediction =
+                prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+		    labelContainer.childNodes[i].innerHTML = classPrediction;
+		}
+    }
+</script>
+</head>
+<body>
+
+<div>Face detector (Teachable Machine Image Model)</div>
+<div id="loading" style="color:red;">(Loading Model...)</div>
+<br>
+<button type="button" id="web_cam_btn" onclick="init_web_cam()">Start(Web-Cam capture your image)</button>
+<button type="button" id="mob_cam_btn" onclick="init_mob_cam(this)">Start(Mobile-Camera capture your image)</button>
+<br>
+<button type="button" id="mob_capture" onclick="capture_predict()">Capture Image and Predict</button>
+<div id="webcam-container"></div>
+<div id="mob-container">
+	<!-- Camera output -->
+	<video id="camera--view" height="400" width="400" autoplay playsinline></video>
+	<!--<img src="//:0" alt="" id="camera--output">-->
+</div>
+<canvas id="camera--sensor"></canvas>
+<div id="label-container"></div>
+
+</body>
+</html>
