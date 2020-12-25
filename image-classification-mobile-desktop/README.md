@@ -69,3 +69,10 @@
 		}
   }
 ```
+
+- 로컬에서 Javascript Module import시 발생하는 CORS 문제 해결책:  
+> npm(node package manager) 설치 -> http-server로 실행  
+```
+npm install http-server -g
+npx http-server path (index.html이 위치한 경로)
+```
