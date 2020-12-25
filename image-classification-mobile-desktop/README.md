@@ -74,5 +74,5 @@
 > npm(node package manager) 설치 -> http-server로 실행  
 ```
 npm install http-server -g
-npx http-server path (index.html이 위치한 경로)
+npx http-server path (index.html이 위치한 경로) -c-1 (-c-1: disable cache)
 ```
